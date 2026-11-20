@@ -149,4 +149,4 @@ The development server listens on port `30050`.
 
 ## License
 
-No license has been added yet. Until a license is selected, the repository's default copyright restrictions apply.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.

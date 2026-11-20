@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Raidtech Calendar</title><link rel="stylesheet" href="/static/style.css"></head>
+<body><main class="shell">
+<header><div><div class="eyebrow">RAIDTECH · JELLYFIN</div><h1>Calendrier des sorties</h1><p>Films et épisodes des médias demandés sur Seerr</p></div><div class="status" id="status">Chargement…</div></header>
+<section class="toolbar"><button id="prev">‹</button><h2 id="month"></h2><button id="next">›</button><button id="today" class="today">Aujourd'hui</button><span class="spacer"></span><button class="filter active" data-filter="all">Tout</button><button class="filter" data-filter="movie">Films</button><button class="filter" data-filter="tv">Séries</button></section>
+<section class="calendar"><div class="weekdays"><span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span></div><div id="days" class="days"></div></section>
+<section class="legend"><span><i class="dot movie"></i> Film</span><span><i class="dot tv"></i> Épisode</span><span id="updated"></span></section>
+<section id="details" class="details"><h3>À venir</h3><p>Sélectionne un événement dans le calendrier pour voir ses détails.</p></section>
+<footer>Les dates proviennent des métadonnées TMDB associées aux demandes Seerr. Elles peuvent évoluer.</footer>
+</main><script src="/static/app.js"></script></body></html>

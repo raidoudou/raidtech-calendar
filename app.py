@@ -15,6 +15,8 @@ log = app.logger
 
 SEERR_URL = os.environ.get("SEERR_URL", "").rstrip("/")
 SEERR_API_KEY = os.environ.get("SEERR_API_KEY", "")
+TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "").strip()
+TMDB_BASE_URL = "https://api.themoviedb.org/3"
 JELLYFIN_URL = os.environ.get("JELLYFIN_URL", "").rstrip("/")
 JELLYFIN_API_KEY = os.environ.get("JELLYFIN_API_KEY", "")
 SYNC_SECONDS = max(300, int(os.environ.get("SYNC_SECONDS", "3600")))
@@ -91,6 +93,58 @@ def api_get(path, params=None):
     )
     response.raise_for_status()
     return response.json()
+
+def tmdb_api_get(path, params=None):
+    if not TMDB_API_KEY:
+        raise RuntimeError("TMDB_API_KEY manquante")
+    query = dict(params or {})
+    headers = {}
+    # TMDB v4 Read Access Tokens are JWTs; v3 API keys are sent as api_key.
+    if TMDB_API_KEY.count(".") == 2:
+        headers["Authorization"] = f"Bearer {TMDB_API_KEY}"
+    else:
+        query["api_key"] = TMDB_API_KEY
+    response = requests.get(
+        f"{TMDB_BASE_URL}/{path.lstrip('/')}",
+        headers=headers, params=query, timeout=30,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def normalize_tmdb_episode(episode):
+    return {
+        **episode,
+        "airDate": episode.get("air_date"),
+        "seasonNumber": episode.get("season_number"),
+        "episodeNumber": episode.get("episode_number"),
+    }
+
+
+def normalize_tmdb_details(kind, details):
+    normalized = {
+        **details,
+        "posterPath": details.get("poster_path"),
+        "overview": details.get("overview") or "",
+    }
+    if kind == "movie":
+        normalized.update({
+            "title": details.get("title"),
+            "releaseDate": details.get("release_date"),
+        })
+    else:
+        normalized.update({
+            "name": details.get("name"),
+            "seasons": [
+                {**season, "seasonNumber": season.get("season_number")}
+                for season in details.get("seasons", [])
+            ],
+            "nextEpisodeToAir": (
+                normalize_tmdb_episode(details["next_episode_to_air"])
+                if isinstance(details.get("next_episode_to_air"), dict) else None
+            ),
+        })
+    return normalized
 
 
 def as_date(value):
@@ -170,7 +224,7 @@ def get_media_details(kind, tmdb_id):
         return json.loads(row["details_json"])
 
     try:
-        details = api_get(f"{kind}/{tmdb_id}", {"language": "fr-FR"})
+        details = normalize_tmdb_details(kind, tmdb_api_get(f"{kind}/{tmdb_id}", {"language": "fr-FR"}))
         with db_connect() as db:
             db.execute("""
                 INSERT INTO media_cache VALUES (?, ?, ?, ?)
@@ -194,8 +248,8 @@ def get_season_episodes(tmdb_id, season_number):
     if row and cache_is_fresh(row["fetched_at"], SEASON_CACHE_HOURS):
         return json.loads(row["episodes_json"])
     try:
-        payload = api_get(f"tv/{tmdb_id}/season/{season_number}", {"language": "fr-FR"})
-        episodes = payload.get("episodes") or []
+        payload = tmdb_api_get(f"tv/{tmdb_id}/season/{season_number}", {"language": "fr-FR"})
+        episodes = [normalize_tmdb_episode(ep) for ep in (payload.get("episodes") or [])]
         with db_connect() as db:
             db.execute("""
                 INSERT INTO season_cache VALUES (?, ?, ?, ?)
@@ -425,7 +479,7 @@ def api_events():
 def health():
     return jsonify({
         "ok": True,
-        "configured": bool(SEERR_API_KEY and SEERR_URL),
+        "configured": bool(SEERR_API_KEY and SEERR_URL and TMDB_API_KEY),
         "database": os.path.exists(DB_PATH),
     })
 

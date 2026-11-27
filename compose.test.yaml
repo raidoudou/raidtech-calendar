@@ -1,0 +1,19 @@
+services:
+  raidtech-calendar-test:
+    build: .
+    container_name: raidtech-calendar-test
+    restart: unless-stopped
+    environment:
+      SEERR_URL: ${SEERR_URL:?Set SEERR_URL in .env}
+      SEERR_API_KEY: ${SEERR_API_KEY:?Set SEERR_API_KEY in .env}
+      TMDB_API_KEY: ${TMDB_API_KEY:?Set TMDB_API_KEY in .env}
+      JELLYFIN_URL: ${JELLYFIN_URL:-}
+      JELLYFIN_API_KEY: ${JELLYFIN_API_KEY:-}
+      SYNC_SECONDS: ${SYNC_SECONDS:-3600}
+      MEDIA_CACHE_HOURS: ${MEDIA_CACHE_HOURS:-6}
+      SEASON_CACHE_HOURS: ${SEASON_CACHE_HOURS:-24}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "30051:30050"
+    volumes:
+      - ./data-test:/app/data

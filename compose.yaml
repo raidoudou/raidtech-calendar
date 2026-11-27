@@ -6,6 +6,7 @@ services:
     environment:
       SEERR_URL: ${SEERR_URL:?Set SEERR_URL in .env}
       SEERR_API_KEY: ${SEERR_API_KEY:?Set SEERR_API_KEY in .env}
+      TMDB_API_KEY: ${TMDB_API_KEY:?Set TMDB_API_KEY in .env}
       JELLYFIN_URL: ${JELLYFIN_URL:-}
       JELLYFIN_API_KEY: ${JELLYFIN_API_KEY:-}
       SYNC_SECONDS: ${SYNC_SECONDS:-3600}

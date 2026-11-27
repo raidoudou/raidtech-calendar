@@ -108,7 +108,13 @@ def tmdb_api_get(path, params=None):
         f"{TMDB_BASE_URL}/{path.lstrip('/')}",
         headers=headers, params=query, timeout=30,
     )
-    response.raise_for_status()
+    # Ne jamais laisser requests inclure l'URL complète dans les erreurs :
+    # avec une clé v3, celle-ci se trouve dans la query string.
+    if not response.ok:
+        raise requests.HTTPError(
+            f"TMDB a répondu HTTP {response.status_code} pour {path}",
+            response=response,
+        )
     return response.json()
 
 
@@ -232,6 +238,23 @@ def get_media_details(kind, tmdb_id):
                 details_json=excluded.details_json, fetched_at=excluded.fetched_at
             """, (kind, str(tmdb_id), json.dumps(details, ensure_ascii=False), iso_now()))
         return details
+    except requests.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            if row:
+                log.warning(
+                    "TMDB ne trouve plus %s/%s : conservation du cache existant",
+                    kind, tmdb_id,
+                )
+                return json.loads(row["details_json"])
+            log.warning(
+                "Média ignoré : TMDB ne trouve pas %s/%s (HTTP 404)",
+                kind, tmdb_id,
+            )
+            return {}
+        if row:
+            log.warning("Utilisation du cache TMDB périmé pour %s/%s", kind, tmdb_id)
+            return json.loads(row["details_json"])
+        raise
     except requests.RequestException:
         if row:
             log.warning("Utilisation du cache TMDB périmé pour %s/%s", kind, tmdb_id)
@@ -258,6 +281,24 @@ def get_season_episodes(tmdb_id, season_number):
             """, (str(tmdb_id), int(season_number),
                   json.dumps(episodes, ensure_ascii=False), iso_now()))
         return episodes
+    except requests.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            if row:
+                log.warning(
+                    "TMDB ne trouve plus la saison %s de %s : conservation du cache",
+                    season_number, tmdb_id,
+                )
+                return json.loads(row["episodes_json"])
+            log.warning(
+                "Saison %s ignorée : TMDB ne la trouve pas pour la série %s (HTTP 404)",
+                season_number, tmdb_id,
+            )
+            return []
+        if row:
+            log.warning("Utilisation du cache périmé pour la saison %s de %s",
+                        season_number, tmdb_id)
+            return json.loads(row["episodes_json"])
+        raise
     except requests.RequestException:
         if row:
             log.warning("Utilisation du cache périmé pour la saison %s de %s",
